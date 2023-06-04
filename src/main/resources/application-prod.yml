@@ -1,0 +1,11 @@
+spring:
+  profiles:
+    active: prod
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://124.70.63.241:3306/yupao
+    username: yupao
+    password: RbeCHGW5zjz7Faz7
+  # session失效时间
+  session:
+    timeout: 86400
