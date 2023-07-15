@@ -1,6 +1,7 @@
 package cn.ichensw.yupao.utils;
 
 
+import cn.ichensw.yupao.model.domain.User;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -714,4 +715,7 @@ public class RedisUtils {
         }
     }
 
+    public void set(String redisMatchKey, List<User> users, int i, TimeUnit timeUnit) {
+        redisTemplate.opsForValue().set(redisMatchKey, users, i, timeUnit);
+    }
 }

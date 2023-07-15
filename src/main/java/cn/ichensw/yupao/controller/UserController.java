@@ -6,6 +6,9 @@ import cn.ichensw.yupao.constant.UserConstant;
 import cn.ichensw.yupao.exception.BusinessException;
 import cn.ichensw.yupao.model.domain.User;
 import cn.ichensw.yupao.model.request.UserLoginRequest;
+import cn.ichensw.yupao.model.request.UserRegisterRequest;
+import cn.ichensw.yupao.model.request.UserTagAddRequest;
+import cn.ichensw.yupao.model.request.UserTagRemoveRequest;
 import cn.ichensw.yupao.service.UserService;
 import cn.ichensw.yupao.utils.RedisUtils;
 import cn.ichensw.yupao.utils.ResultUtils;
@@ -13,12 +16,17 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import io.swagger.annotations.Api;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.util.CollectionUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import static cn.ichensw.yupao.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
  * 用户接口
@@ -35,6 +43,8 @@ public class UserController {
     private UserService userService;
     @Resource
     private RedisUtils redisUtils;
+    @Resource
+    private RedisTemplate redisTemplate;
 
     /**
      * 用户登录
@@ -55,8 +65,23 @@ public class UserController {
         }
 
         User userInfo = userService.userLogin(userAccount, userPassword, request);
-//        return new BaseResponse<User>(0, user, "ok");
         return ResultUtils.success(userInfo);
+    }
+
+    /**
+     * 用户注册
+     *
+     * @param userRegisterRequest 注册参数
+     * @return 结果
+     */
+    @PostMapping("/register")
+    public BaseResponse<Boolean> userRegister(@RequestBody UserRegisterRequest userRegisterRequest) {
+        if (userRegisterRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "请求参数为空");
+        }
+
+        Boolean result = userService.userRegister(userRegisterRequest.getUserAccount(), userRegisterRequest.getUserPassword(), userRegisterRequest.getCheckPassword());
+        return ResultUtils.success(result);
     }
 
     /**
@@ -83,7 +108,7 @@ public class UserController {
     @GetMapping("/current")
     public BaseResponse<User> getCurrentUser(HttpServletRequest request) {
         // 1. 获取会话session中的User用户信息
-        User currentUser = (User) request.getSession().getAttribute(UserConstant.USER_LOGIN_STATE);
+        User currentUser = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
         if (currentUser == null) {
             throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
@@ -166,6 +191,49 @@ public class UserController {
     }
 
     /**
+     * 添加用户标签
+     *
+     * @param userTagAddRequest 标签名称
+     * @return 结果
+     */
+    @PostMapping("/tag/add")
+    public BaseResponse<Boolean> addTag(@RequestBody UserTagAddRequest userTagAddRequest, HttpServletRequest request) {
+        if (userTagAddRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 2. 校验权限
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        userTagAddRequest.setUserId(loginUser.getUserId());
+        // 3. 触发更新
+        Boolean flag = userService.addTag(userTagAddRequest);
+        return ResultUtils.success(flag);
+    }
+
+    /**
+     * 删除用户标签
+     *
+     * @param userTagRemoveRequest 标签名称
+     * @return 结果
+     */
+    @PostMapping("/tag/remove")
+    public BaseResponse<Boolean> removeTag(@RequestBody UserTagRemoveRequest userTagRemoveRequest, HttpServletRequest request) {
+        if (userTagRemoveRequest == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        // 2. 校验权限
+        User loginUser = userService.getLoginUser(request);
+        if (loginUser == null) {
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
+        }
+        // 3. 触发更新
+        Boolean flag = userService.removeTag(userTagRemoveRequest);
+        return ResultUtils.success(flag);
+    }
+
+    /**
      * 根据标签匹配用户
      *
      * @param num     匹配数量
@@ -173,11 +241,26 @@ public class UserController {
      * @return 结果
      */
     @GetMapping("/match")
-    public BaseResponse<List<User>> matchUsers(long num, HttpServletRequest request) {
+    public BaseResponse<List<User>> matchUsers(long num, HttpServletRequest request) throws IOException {
         if (num <= 0 || num > 20) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         User user = userService.getLoginUser(request);
-        return ResultUtils.success(userService.matchUsers(num, user));
+
+        String redisMatchKey = String.format("nero:user:match:%s", user.getUserId());
+        // 如果有缓存，直接读缓存
+        List<User> matchUsers = (List<User>) redisUtils.get(redisMatchKey);
+        if (matchUsers != null) {
+            return ResultUtils.success(matchUsers);
+        }
+
+        List<User> users = userService.matchUsers(num, user);
+        try {
+            // 设置缓存，3小时过期
+            redisUtils.set(redisMatchKey, users, 3, TimeUnit.HOURS);
+        } catch (Exception e) {
+            log.error("redis set key error", e);
+        }
+        return ResultUtils.success(users);
     }
 }

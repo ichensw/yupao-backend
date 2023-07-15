@@ -1,41 +1,33 @@
 package cn.ichensw.yupao.config;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * @author csw
  */
 @Configuration
-public class CorsConfig {
+public class CorsConfig implements WebMvcConfigurer {
+
+
 
     /**
       * 当前跨域请求最大有效时长。这里默认1天
       */
     private static final long MAX_AGE = 24 * 60 * 60;
 
-    private CorsConfiguration buildConfig() {
-        CorsConfiguration corsConfiguration = new CorsConfiguration();
-        //允许接受cookie
-        corsConfiguration.setAllowCredentials(true);
-        // 1 设置访问源地址
-        corsConfiguration.addAllowedOrigin("*");
-        // 2 设置访问源请求头
-        corsConfiguration.addAllowedHeader("*");
-        // 3 设置访问源请求方法
-        corsConfiguration.addAllowedMethod("*");
-        corsConfiguration.setMaxAge(MAX_AGE);
-        return corsConfiguration;
-    }
-
-    @Bean
-    public CorsFilter corsFilter() {
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 4 对接口配置跨域设置
-        source.registerCorsConfiguration("/**", buildConfig());
-        return new CorsFilter(source);
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        // 覆盖所有请求
+        registry.addMapping("/**")
+                // 允许发送 Cookie
+                .allowCredentials(true)
+                // 放行哪些域名（必须用 patterns，否则 * 会和 allowCredentials 冲突）
+                .allowedOriginPatterns("*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .exposedHeaders("*")
+                .maxAge(MAX_AGE);
     }
 }

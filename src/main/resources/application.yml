@@ -4,8 +4,8 @@ aliyun:
   oss:
     endpoint: oss-cn-hangzhou.aliyuncs.com
     urlPrefix: http://yupao-project-ichensw.oss-cn-hangzhou.aliyuncs.com
-    accessKeyId: LTAI5tF4yknHS8v7yLrkB8mh
-    accessKeySecret: Q3XYGDvyDDMYAVZJvGqyXz3lgOUSPi
+    accessKeyId: xxxxxxxx
+    accessKeySecret: xxxxxxxxxx
     bucketName: yupao-project-ichensw
     fileHost: files
 
@@ -14,19 +14,20 @@ spring:
     active: dev
   application:
     name: yupao-backend
-#  datasource:
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#    url: jdbc:mysql://localhost:3306/yupao
-#    username: root
-#    password: root
+  #  datasource:
+  #    driver-class-name: com.mysql.cj.jdbc.Driver
+  #    url: jdbc:mysql://localhost:3306/yupao
+  #    username: root
+  #    password: root
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://124.70.63.241:3306/yupao
-    username: yupao
-    password: dxeXNRHsm8nWHAFM
+    url: jdbc:mysql://xxxxx:3306/yupao
+    username: xxxxx
+    password: xxxxxx
   # session失效时间
   session:
-    timeout: 1800
+    timeout: 86400
+    store-type: redis
   redis:
     host: localhost
     port: 6379
@@ -49,21 +50,21 @@ spring:
       # 设置总上传的文件大小
       max-request-size: 20MB
 server:
-  port: 8080
+  port: 8801
   servlet:
     context-path: /api
-    session:
-      cookie:
-        domain: localhost
-logging:
-  level:
-    cn:
-      ichensw:
-        yupao:
-          mapper: debug
+#    session:
+#      cookie:
+#        domain: 42.192.149.3:9801
+#logging:
+#  level:
+#    cn:
+#      ichensw:
+#        yupao:
+#          mapper: trace
 mybatis-plus:
-#  configuration:
-#    map-underscore-to-camel-case: false
+  #  configuration:
+  #    map-underscore-to-camel-case: false
   global-config:
     db-config:
       logic-delete-field: isDelete # 全局逻辑删除的实体字段名(since 3.3.0,配置后可以忽略不配置步骤2)

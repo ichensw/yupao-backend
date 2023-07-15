@@ -1,7 +1,14 @@
 package cn.ichensw.yupao.utils;
 
+import cn.ichensw.yupao.enums.ListTypeEnum;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
+
+import static cn.ichensw.yupao.enums.ListTypeEnum.ENGLISH;
+import static cn.ichensw.yupao.enums.ListTypeEnum.MIXEECAE;
 
 /**
  * 算法工具类
@@ -47,6 +54,51 @@ public class AlgorithmUtils {
             }
         }
         return d[n][m];
+    }
+
+
+    public static double sorce(List<String> list1, List<String> list2) throws IOException {
+        List<String> resultList1 = list1.stream().map(String::toLowerCase).collect(Collectors.toList());
+        List<String> resultList2 = list2.stream().map(String::toLowerCase).collect(Collectors.toList());
+        int strType = AllUtils.getStrType(resultList1);
+        int type = AllUtils.getStrType(resultList2);
+        ListTypeEnum enumByValue = ListTypeEnum.getEnumByValue(strType);
+        ListTypeEnum enumByValue1 = ListTypeEnum.getEnumByValue(type);
+        if (enumByValue == MIXEECAE) {
+            resultList1 = AllUtils.tokenize(resultList1);
+        }
+        if (enumByValue1 == MIXEECAE) {
+            resultList2 = AllUtils.tokenize(resultList2);
+        }
+        double ikSorce = 0;
+        if (enumByValue != ENGLISH && enumByValue1 != ENGLISH) {
+            List<String> resultList3 = list1.stream().map(String::toLowerCase).collect(Collectors.toList());
+            List<String> resultList4 = list2.stream().map(String::toLowerCase).collect(Collectors.toList());
+            List<String> quotedList1 = resultList3.stream()
+                    .map(str -> "\"" + str + "\"")
+                    .collect(Collectors.toList());
+            List<String> quotedList2 = resultList4.stream()
+                    .map(str -> "\"" + str + "\"")
+                    .collect(Collectors.toList());
+            String tags1 = AllUtils.collectChineseChars(quotedList1);
+            List<String> Ls = AllUtils.analyzeText(tags1);
+            String tags2 = AllUtils.collectChineseChars(quotedList2);
+            List<String> Ls2 = AllUtils.analyzeText(tags2);
+            ikSorce = AllUtils.calculateJaccardSimilarity(Ls, Ls2);
+        }
+        int EditDistanceSorce = AllUtils.calculateEditDistance(resultList1, resultList2);
+        double maxEditDistance = Math.max(resultList1.size(), resultList2.size());
+        double EditDistance = 1 - EditDistanceSorce / maxEditDistance;
+        double JaccardSorce = AllUtils.calculateJaccardSimilarity(resultList1, resultList2);
+        double similaritySorce = AllUtils.cosineSimilarity(resultList1, resultList2);
+        /**
+         * 编辑距离 权重为0.5
+         * Jaccard相似度算法（ik分词后使用Jaccard相似度算法） 权重为0.3
+         *  余弦相似度 权重为0.2
+         *
+         */
+        double totalSorce = EditDistance * 0.5 + JaccardSorce * 0.3 + similaritySorce * 0.2 + ikSorce * 0.3;
+        return totalSorce;
     }
 
     /**

@@ -4,10 +4,13 @@ import cn.ichensw.yupao.common.ErrorCode;
 import cn.ichensw.yupao.exception.BusinessException;
 import cn.ichensw.yupao.mapper.UserMapper;
 import cn.ichensw.yupao.model.domain.User;
+import cn.ichensw.yupao.model.request.UserTagAddRequest;
+import cn.ichensw.yupao.model.request.UserTagRemoveRequest;
 import cn.ichensw.yupao.service.UserService;
 import cn.ichensw.yupao.utils.AlgorithmUtils;
 import cn.ichensw.yupao.utils.RedisUtils;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -21,6 +24,7 @@ import org.springframework.util.DigestUtils;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,11 +60,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
      * @param userAccount   用户账号
      * @param userPassword  用户密码
      * @param checkPassword 二次校验密码
-     * @param email
      * @return 注册结果
      */
     @Override
-    public long userRegister(String userAccount, String userPassword, String checkPassword, String email) {
+    public Boolean userRegister(String userAccount, String userPassword, String checkPassword) {
         // 1. 校验
         if (StringUtils.isAnyBlank(userAccount, userPassword, checkPassword)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "账号或密码为空");
@@ -92,7 +95,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         User user = new User();
         user.setUserAccount(userAccount);
         user.setUserPassword(encryptPassword);
-        user.setEmail(email);
+        user.setTags("[\"男\"]");
         // 默认用户名和账号相同
         user.setUsername(userAccount);
         // 默认头像
@@ -102,7 +105,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.INSERT_ERROR);
         }
 
-        return user.getUserId();
+        return saveResult;
     }
 
     /**
@@ -349,15 +352,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     }
 
     @Override
-    public List<User> matchUsers(long num, User loginUser) {
+    public List<User> matchUsers(long num, User loginUser) throws IOException {
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.select("id", "tags");
         queryWrapper.isNotNull("tags");
         List<User> userList = this.list();
         String tags = loginUser.getTags();
+        if (StringUtils.isBlank(tags)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户标签为空");
+        }
         List<String> tagList = JSON.parseObject(tags, new TypeReference<List<String>>(){});
         // 集合<集合<用户数据, 相似度>>
-        List<Pair<User, Long>> list = new ArrayList<>();
+        List<Pair<User, Double>> list = new ArrayList<>();
         for (User user : userList) {
             String userTags = user.getTags();
             // 排除空标签 和 自己的标签
@@ -365,12 +371,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
                 continue;
             }
             List<String> userTagList = JSON.parseObject(userTags, new TypeReference<List<String>>() {});
-            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            double distance = AlgorithmUtils.sorce(tagList, userTagList);
             list.add(new Pair<>(user, distance));
         }
         // 按照计算出来的相似度 由大到小排序
-        List<Pair<User, Long>> topUserPairList = list.stream().
-                sorted((a, b) -> Math.toIntExact(a.getValue() - b.getValue()))
+        List<Pair<User, Double>> topUserPairList = list.stream().
+                sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
                 .limit(num)
                 .collect(Collectors.toList());
         // 取出用户 id
@@ -396,6 +402,35 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     @Override
     public User getUserById(Integer userId) {
         return this.getById(userId);
+    }
+
+    @Override
+    public Boolean removeTag(UserTagRemoveRequest request) {
+        List<String> oldTags = request.getOldTags();
+        List<String> tagsList = new ArrayList<>();
+        // 遍历oldTags，如果有相同的tag，则不添加
+        for (String oldTag : oldTags) {
+            if (!oldTag.equals(request.getTag())) {
+                tagsList.add(oldTag);
+            }
+        }
+        String newTags = JSON.toJSONString(tagsList);
+
+        User user = new User();
+        user.setUserId(request.getUserId());
+        user.setTags(newTags);
+        return this.updateById(user);
+    }
+
+    @Override
+    public Boolean addTag(UserTagAddRequest request) {
+        User user = this.getById(request.getUserId());
+        String tags = user.getTags();
+        // 更新JSON格式的tag标签
+        JSONArray tagsArr = JSON.parseArray(tags);
+        tagsArr.add(request.getTag());
+        user.setTags(tagsArr.toJSONString());
+        return this.updateById(user);
     }
 
     /**

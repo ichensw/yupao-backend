@@ -1,11 +1,13 @@
 package cn.ichensw.yupao.service;
 
-import cn.ichensw.yupao.common.BaseResponse;
 import cn.ichensw.yupao.model.domain.User;
+import cn.ichensw.yupao.model.request.UserTagAddRequest;
+import cn.ichensw.yupao.model.request.UserTagRemoveRequest;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -22,10 +24,9 @@ public interface UserService extends IService<User> {
      * @param userAccount   用户账号
      * @param userPassword  用户密码
      * @param checkPassword 二次校验密码
-     * @param email
      * @return 注册结果
      */
-    long userRegister(String userAccount, String userPassword, String checkPassword, String email);
+    Boolean userRegister(String userAccount, String userPassword, String checkPassword);
 
     /**
      * 用户登录
@@ -119,7 +120,7 @@ public interface UserService extends IService<User> {
      * @param loginUser 当前用户
      * @return List<User>
      */
-    List<User> matchUsers(long num, User loginUser);
+    List<User> matchUsers(long num, User loginUser) throws IOException;
 
     /**
      * 根据id查询用户
@@ -127,4 +128,20 @@ public interface UserService extends IService<User> {
      * @return User
      */
     User getUserById(Integer userId);
+
+    /**
+     * 添加用户标签
+     *
+     * @param request 请求参数
+     * @return Integer
+     */
+    Boolean addTag(UserTagAddRequest request);
+
+    /**
+     * 修改用户标签
+     *
+     * @param request 请求参数
+     * @return Integer
+     */
+    Boolean removeTag(UserTagRemoveRequest request);
 }
