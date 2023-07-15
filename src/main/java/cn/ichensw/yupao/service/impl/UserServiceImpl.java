@@ -1,5 +1,6 @@
 package cn.ichensw.yupao.service.impl;
 
+import cn.hutool.core.lang.Pair;
 import cn.ichensw.yupao.common.ErrorCode;
 import cn.ichensw.yupao.exception.BusinessException;
 import cn.ichensw.yupao.mapper.UserMapper;
@@ -15,7 +16,6 @@ import com.alibaba.fastjson2.TypeReference;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import javafx.util.Pair;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
